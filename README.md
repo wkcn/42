@@ -2,3 +2,4 @@
 
 - [C++](42.cpp)
 - [Python](42.py)
+- [Julia](42.jl)
