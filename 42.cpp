@@ -16,6 +16,7 @@ public:
       *(p++) = str[i] - '0';
     }
   }
+  bool IsZero() {return data.size() == 1 && data[0] == 0;}
   friend UBigInt operator+(const UBigInt& a, const UBigInt& b);
   friend UBigInt operator-(const UBigInt& a, const UBigInt& b);
   friend UBigInt operator*(const UBigInt& a, const UBigInt& b);
@@ -146,6 +147,8 @@ public:
   friend BigInt operator-(const BigInt& a, const BigInt& b);
   friend BigInt operator*(const BigInt& a, const BigInt& b);
 private:
+  void PostProcess();
+private:
   bool minus;
   UBigInt data;
 };
@@ -170,6 +173,7 @@ BigInt operator+(const BigInt& a, const BigInt& b) {
   }
   c.minus = a.minus; 
   c.data = a.data + b.data;
+  c.PostProcess();
   return c;
 }
 
@@ -187,6 +191,7 @@ BigInt operator-(const BigInt& a, const BigInt& b) {
     c.minus = !a.minus;
     c.data = a.data - b.data;
   }
+  c.PostProcess();
   return c;
 }
 
@@ -194,7 +199,13 @@ BigInt operator*(const BigInt& a, const BigInt& b) {
   BigInt c;
   c.minus = a.minus ^ b.minus;
   c.data = a.data * b.data;
+  c.PostProcess();
   return c;
+}
+
+void BigInt::PostProcess() {
+  if (data.IsZero())
+    minus = false;
 }
 
 const string a_str = "-80538738812075974";
