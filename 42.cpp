@@ -19,8 +19,8 @@ public:
   friend UBigInt operator+(const UBigInt& a, const UBigInt& b);
   friend UBigInt operator-(const UBigInt& a, const UBigInt& b);
   friend UBigInt operator*(const UBigInt& a, const UBigInt& b);
-  friend UBigInt operator==(const UBigInt& a, const UBigInt& b);
-  friend UBigInt operator<(const UBigInt& a, const UBigInt& b);
+  friend bool operator==(const UBigInt& a, const UBigInt& b);
+  friend bool operator<(const UBigInt& a, const UBigInt& b);
   friend ostream& operator<<(ostream& os, const UBigInt& num);
 private:
   void DeleteLeaderZero();
@@ -30,15 +30,15 @@ private:
 };
 
 UBigInt operator+(const UBigInt& a, const UBigInt& b) {
-  auto pa = a.data.rbegin();
-  auto pb = b.data.rbegin();
+  auto pa = a.data.begin();
+  auto pb = b.data.begin();
   int carry = 0;
   UBigInt c;
-  while (pa != a.data.rend() || pb != b.data.rend() || carry > 0) {
-    if (pa != a.data.rend())
-      carry += (pa++)->data;
-    if (pb != b.data.rend())
-      carry += (pb++)->data;
+  while (pa != a.data.end() || pb != b.data.end() || carry > 0) {
+    if (pa != a.data.end())
+      carry += *(pa++);
+    if (pb != b.data.end())
+      carry += *(pb++);
     c.data.push_back(carry % 10);
     carry /= 10;
   }
@@ -49,13 +49,13 @@ UBigInt operator+(const UBigInt& a, const UBigInt& b) {
 UBigInt operator-(const UBigInt& a, const UBigInt& b) {
   // assume a >= b
   if (a < b) return b - a;
-  auto pa = a.data.rbegin();
-  auto pb = b.data.rbegin();
+  auto pa = a.data.begin();
+  auto pb = b.data.begin();
   bool borrow = false;
   UBigInt c;
-  while (pa != a.data.rend()) {
+  while (pa != a.data.end()) {
     int v = *(pa++) - borrow;
-    if (pb != b.data.rend()) v -= *(pb++);
+    if (pb != b.data.end()) v -= *(pb++);
     if (v < 0) {
       v += 10;
       borrow = true;
@@ -75,7 +75,7 @@ UBigInt operator*(const UBigInt& a, const UBigInt& b) {
   for (int bi = 0; bi < b.data.size(); ++bi) {
     for (int ai = 0; ai < a.data.size(); ++ai) {
       int v = a.data[ai] * b.data[bi];
-      c[ai + bi] += v;
+      c.data[ai + bi] += v;
     }
   }
   c.Carry();
@@ -83,17 +83,17 @@ UBigInt operator*(const UBigInt& a, const UBigInt& b) {
   return c;
 }
 
-UBigInt operator==(const UBigInt& a, const UBigInt& b) {
+bool operator==(const UBigInt& a, const UBigInt& b) {
   if (a.data.size() != b.data.size()) return false;
-  for (auto pa = a.data.begin(), pb = b.data.begin(); pa != a.data.end(); ++pa, ++pb) {
+  for (auto pa = a.data.rbegin(), pb = b.data.rbegin(); pa != a.data.rend(); ++pa, ++pb) {
     if (*pa != *pb) return false; 
   }
   return true;
 }
 
-UBigInt operator<(const UBigInt& a, const UBigInt& b) {
+bool operator<(const UBigInt& a, const UBigInt& b) {
   if (a.data.size() != b.data.size()) return a.data.size() < b.data.size();
-  for (auto pa = a.data.begin(), pb = b.data.begin(); pa != a.data.end(); ++pa, ++pb) {
+  for (auto pa = a.data.rbegin(), pb = b.data.rbegin(); pa != a.data.rend(); ++pa, ++pb) {
     if (*pa != *pb) return *pa < *pb;
   }
   return false;
@@ -114,7 +114,7 @@ void UBigInt::DeleteLeaderZero() {
 
 void UBigInt::Carry() {
   int carry = 0;
-  for (auto p = data.rbegin(); p != data.rend(); ++p) {
+  for (auto p = data.begin(); p != data.end(); ++p) {
     *p += carry;
     carry = *p / 10;
     *p %= 10;
@@ -157,12 +157,43 @@ ostream& operator<<(ostream& os, const BigInt& num) {
 }
 
 BigInt operator+(const BigInt& a, const BigInt& b) {
-  if (a.minus != b.minus) {
-
-  }
   BigInt c;
+  if (a.minus != b.minus) {
+    if (a.data < b.data) {
+      c.minus = b.minus;
+      c.data = b.data - a.data;
+    } else {
+      c.minus = a.minus;
+      c.data = a.data - b.data;
+    }
+    return c;
+  }
   c.minus = a.minus; 
   c.data = a.data + b.data;
+  return c;
+}
+
+BigInt operator-(const BigInt& a, const BigInt& b) {
+  BigInt c;
+  if (a.minus != b.minus) {
+    c.minus = a.minus;
+    c.data = a.data + b.data;
+    return c;
+  }
+  if (a.data < b.data) {
+    c.minus = !a.minus;
+    c.data = b.data - a.data;
+  } else {
+    c.minus = !a.minus;
+    c.data = a.data - b.data;
+  }
+  return c;
+}
+
+BigInt operator*(const BigInt& a, const BigInt& b) {
+  BigInt c;
+  c.minus = a.minus ^ b.minus;
+  c.data = a.data * b.data;
   return c;
 }
 
@@ -172,6 +203,12 @@ const string c_str = "12602123297335631";
 
 int main() {
   BigInt a(a_str);
-  cout << a << endl;
+  BigInt b(b_str);
+  BigInt c(c_str);
+  BigInt wa = a * a * a;
+  BigInt wb = b * b * b;
+  BigInt wc = c * c * c;
+  BigInt out = a * a * a + b * b * b + c * c * c;
+  cout << out << endl;
   return 0;
 }
